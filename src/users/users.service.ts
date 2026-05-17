@@ -14,17 +14,17 @@ export class UsersService {
     private readonly usersRepository: Repository<User>,
   ) {}
 
-  findByEmail(email: string) {
+  findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { email } });
   }
 
-  findAll() {
+  findAll(): Promise<User[]> {
     return this.usersRepository.find({
       order: { id: 'DESC' },
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: number): Promise<User> {
     const user = await this.usersRepository.findOne({
       where: { id },
     });
@@ -36,7 +36,12 @@ export class UsersService {
     return user;
   }
 
-  async create(nom: string, email: string, password: string) {
+  async create(
+    nom: string,
+    email: string,
+    password: string,
+    prenom?: string,
+  ): Promise<User> {
     const existingUser = await this.findByEmail(email);
 
     if (existingUser) {
@@ -45,6 +50,7 @@ export class UsersService {
 
     const user = this.usersRepository.create({
       nom,
+      prenom: prenom || '',
       email,
       password,
     });

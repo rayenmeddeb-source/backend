@@ -14,6 +14,7 @@ type AuthUser = {
   id: number;
   nom: string;
   email: string;
+  prenom?: string;
 };
 
 @Injectable()
@@ -73,13 +74,14 @@ export class AuthService {
       user: {
         id: user.id,
         nom: user.nom,
+        prenom: user.prenom,
         email: user.email,
         type,
       },
     };
   }
 
-  async signup(nom: string, email: string, password: string) {
+  async signup(nom: string, email: string, password: string, prenom?: string) {
     const existingAdministrateur =
       await this.superAdminsService.findByEmail(email);
 
@@ -105,7 +107,12 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const client = await this.usersService.create(nom, email, hashedPassword);
+    const client = await this.usersService.create(
+      nom,
+      email,
+      hashedPassword,
+      prenom,
+    );
 
     return {
       message: 'Compte client créé avec succès.',
@@ -117,6 +124,7 @@ export class AuthService {
       user: {
         id: client.id,
         nom: client.nom,
+        prenom: client.prenom,
         email: client.email,
         type: 'client',
       },
