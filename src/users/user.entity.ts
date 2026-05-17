@@ -16,4 +16,10 @@ export class User {
 
   @Column()
   password: string;
+
+  @Column({
+    type: 'varchar',
+    default: 'EN_ATTENTE',
+  })
+  status: string;
 }
