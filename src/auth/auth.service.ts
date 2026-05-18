@@ -17,6 +17,7 @@ type AuthUser = {
   nom: string;
   email: string;
   prenom?: string;
+  specialite?: string;
 };
 
 @Injectable()
@@ -79,6 +80,7 @@ export class AuthService {
         prenom: user.prenom,
         email: user.email,
         type,
+        specialite: user.specialite || null,
       },
     };
   }
@@ -154,11 +156,7 @@ export class AuthService {
 
     const verificationCode = this.generateVerificationCode();
 
-    await this.usersService.updateVerificationCode(
-      client.id,
-      verificationCode,
-    );
-
+    await this.usersService.updateVerificationCode(client.id, verificationCode);
     await this.sendVerificationEmail(email, verificationCode);
 
     return {
