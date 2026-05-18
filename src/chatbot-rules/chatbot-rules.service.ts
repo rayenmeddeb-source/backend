@@ -138,6 +138,15 @@ export class ChatbotRulesService {
       'suspension',
       'echappement',
       'courroie',
+      'distribution',
+      'bougie',
+      'acceleration',
+      'ralenti',
+      'consommation',
+      'fumee noire',
+      'fumee blanche',
+      'fumee bleue',
+      'liquide refroidissement',
       'joint de culasse',
     ];
 
@@ -153,14 +162,14 @@ export class ChatbotRulesService {
     let score = 0;
 
     if (text.includes(keyword)) {
-      score += 55;
+      score += 60;
     }
 
     const keywordWords = keyword.split(' ').filter((word) => word.length > 2);
 
     keywordWords.forEach((word) => {
       if (text.includes(word)) {
-        score += 15;
+        score += 18;
       }
     });
 
@@ -170,7 +179,7 @@ export class ChatbotRulesService {
 
     diagnosticWords.forEach((word) => {
       if (text.includes(word)) {
-        score += 8;
+        score += 10;
       }
     });
 
@@ -191,12 +200,12 @@ export class ChatbotRulesService {
     if (!this.isAutomotiveMessage(message)) {
       return {
         message:
-          'Je suis spécialisé uniquement dans l’assistance automobile. Décrivez une panne ou un symptôme lié à votre véhicule.',
+          'Je suis spécialisé uniquement dans les pannes automobiles.',
         diagnostic: 'Sujet hors domaine automobile',
         confidence: 0,
         gravite: 'Non applicable',
         conseil:
-          'Veuillez saisir un problème automobile : moteur, batterie, freinage, pneus, voyant, fumée, bruit, odeur, démarrage, etc.',
+          'Décrivez un problème lié à votre véhicule : moteur, batterie, pneus, fumée, freinage, bruit, voyant, démarrage, etc.',
         besoin_prestataire: false,
         categorie: 'Hors sujet',
         cout_estime: {
