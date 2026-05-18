@@ -17,6 +17,11 @@ import { Roles } from '../auth/roles.decorator';
 export class ChatbotRulesController {
   constructor(private readonly chatbotRulesService: ChatbotRulesService) {}
 
+  @Post('analyze')
+  analyze(@Body() body: { message: string }) {
+    return this.chatbotRulesService.analyzeMessage(body.message);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('administrateur')

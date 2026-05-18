@@ -89,6 +89,12 @@ export class AdminsController {
     return this.usersService.findAll();
   }
 
+  @Get('clients/pending')
+  @Roles('administrateur')
+  findPendingClients() {
+    return this.usersService.findPendingUsers();
+  }
+
   @Get('clients/:id')
   @Roles('administrateur')
   findOneClient(@Param('id') id: string) {
@@ -98,7 +104,13 @@ export class AdminsController {
   @Post('clients')
   @Roles('administrateur')
   async createClient(
-    @Body() body: { nom: string; email: string; password: string },
+    @Body()
+    body: {
+      nom: string;
+      prenom?: string;
+      email: string;
+      password: string;
+    },
   ) {
     const existingSuperAdmin = await this.superAdminsService.findByEmail(
       body.email,
@@ -122,7 +134,26 @@ export class AdminsController {
 
     const hashedPassword = await bcrypt.hash(body.password, 10);
 
-    return this.usersService.create(body.nom, body.email, hashedPassword);
+    const client = await this.usersService.create(
+      body.nom,
+      body.email,
+      hashedPassword,
+      body.prenom,
+    );
+
+    return this.usersService.acceptUser(client.id);
+  }
+
+  @Post('clients/:id/accept')
+  @Roles('administrateur')
+  acceptClient(@Param('id') id: string) {
+    return this.usersService.acceptUser(Number(id));
+  }
+
+  @Post('clients/:id/refuse')
+  @Roles('administrateur')
+  refuseClient(@Param('id') id: string) {
+    return this.usersService.refuseUser(Number(id));
   }
 
   @Delete('clients/:id')
