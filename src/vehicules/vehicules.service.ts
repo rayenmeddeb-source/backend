@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Vehicule } from './vehicule.entity';
@@ -18,15 +22,21 @@ export class VehiculesService {
     immatriculation: string;
     carburant?: string;
   }) {
+    const immatriculation = data.immatriculation.trim().toUpperCase();
+
     const existingVehicule = await this.vehiculesRepository.findOne({
-      where: { immatriculation: data.immatriculation },
+      where: { immatriculation },
     });
 
     if (existingVehicule) {
       throw new BadRequestException('Cette immatriculation existe déjà.');
     }
 
-    const vehicule = this.vehiculesRepository.create(data);
+    const vehicule = this.vehiculesRepository.create({
+      ...data,
+      immatriculation,
+    });
+
     return this.vehiculesRepository.save(vehicule);
   }
 
@@ -67,22 +77,30 @@ export class VehiculesService {
   ) {
     const vehicule = await this.findOne(id);
 
-    if (data.immatriculation && data.immatriculation !== vehicule.immatriculation) {
-      const existingVehicule = await this.vehiculesRepository.findOne({
-        where: { immatriculation: data.immatriculation },
-      });
+    if (data.immatriculation) {
+      const immatriculation = data.immatriculation.trim().toUpperCase();
 
-      if (existingVehicule) {
-        throw new BadRequestException('Cette immatriculation existe déjà.');
+      if (immatriculation !== vehicule.immatriculation) {
+        const existingVehicule = await this.vehiculesRepository.findOne({
+          where: { immatriculation },
+        });
+
+        if (existingVehicule) {
+          throw new BadRequestException('Cette immatriculation existe déjà.');
+        }
       }
+
+      data.immatriculation = immatriculation;
     }
 
     Object.assign(vehicule, data);
+
     return this.vehiculesRepository.save(vehicule);
   }
 
   async remove(id: number) {
     const vehicule = await this.findOne(id);
+
     await this.vehiculesRepository.remove(vehicule);
 
     return {
