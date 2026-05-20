@@ -29,6 +29,14 @@ export class ChatbotRulesService {
     const text = this.normalizeText(message);
 
     const automotiveWords = [
+      'tremble',
+      'trembler',
+      'tremblement',
+      'secoue',
+      'secousses',
+      'vibre en roulant',
+      'vibration volant',
+      'vibration roue',
       'voiture',
       'vehicule',
       'auto',
@@ -72,15 +80,47 @@ export class ChatbotRulesService {
       'roue',
       'jante',
       'crevaison',
-      'odeur essence',
-      'diagnostic',
-      'panne',
       'garage',
       'mecanicien',
       'electrique',
+
+      // langage naturel
+      'tac tac',
+      'toc toc',
+      'clac',
+      'grincement',
+      'vibre',
+      'vibration',
+      'secousse',
+      'odeur',
+      'fumee noire',
+      'fumee blanche',
+      'fumee bleue',
+      'ne roule plus',
+      'ne avance plus',
+      'cale',
+      'consomme beaucoup',
+      'perte puissance',
+      'surconsommation',
+      'chauffe beaucoup',
+      'ne freine plus',
+      'bruit bizarre',
+      'bruit moteur',
+      'probleme acceleration',
+      'probleme freinage',
+      'probleme direction',
+      'probleme boite',
+      'probleme electrique',
     ];
 
-    return automotiveWords.some((word) => text.includes(word));
+    const automotiveScore = automotiveWords.reduce((score, word) => {
+      if (text.includes(word)) {
+        return score + 1;
+      }
+      return score;
+    }, 0);
+
+    return automotiveScore >= 1;
   }
 
   private getSeverityScore(gravite: string) {
@@ -191,10 +231,42 @@ export class ChatbotRulesService {
   }
 
   async analyzeMessage(message: string) {
+
     if (!message || message.trim().length < 3) {
       throw new BadRequestException(
         'Veuillez décrire le problème du véhicule.',
       );
+    }
+
+    const text = this.normalizeText(message);
+    const greetings = [
+      'bonjour',
+      'salut',
+      'hello',
+      'bonsoir',
+      'hey',
+      'salam',
+    ];
+
+    if (greetings.includes(text)) {
+      return {
+        message:
+          'Bonjour 👋 Je suis votre assistant automobile intelligent. Décrivez simplement une panne ou un symptôme de votre véhicule.',
+        diagnostic: 'Assistant prêt',
+        confidence: 100,
+        gravite: 'Non applicable',
+        conseil:
+          'Exemple : "ma voiture chauffe", "fumée blanche", "elle tremble quand je roule", "voyant moteur allumé"...',
+        besoin_prestataire: false,
+        categorie: 'Accueil',
+        cout_estime: {
+          min: 0,
+          max: 0,
+        },
+        symptoms: [],
+        matched_keyword: null,
+        alternatives: [],
+      };
     }
 
     if (!this.isAutomotiveMessage(message)) {
@@ -250,15 +322,15 @@ export class ChatbotRulesService {
 
     const symptoms = this.extractSymptoms(message);
 
-    if (results.length === 0) {
+    if (results.length === 0 || results[0].score < 35) {
       return {
         message:
-          'Votre message semble automobile, mais je n’ai pas trouvé de panne précise.',
-        diagnostic: 'Panne non identifiée',
-        confidence: 30,
+          'Je n’ai pas encore identifié précisément cette panne automobile.',
+        diagnostic: 'Diagnostic incertain',
+        confidence: results[0]?.score || 20,
         gravite: 'Moyenne',
         conseil:
-          'Ajoutez plus de détails : bruit, fumée, voyant, odeur, moment du problème, démarrage, freinage ou comportement du véhicule.',
+          'Pouvez-vous préciser davantage le problème ? Exemple : bruit, fumée, vibration, difficulté de démarrage, voyant, perte de puissance, freinage, odeur, consommation, etc.',
         besoin_prestataire: true,
         categorie: 'Diagnostic général',
         cout_estime: {
@@ -266,8 +338,12 @@ export class ChatbotRulesService {
           max: null,
         },
         symptoms,
-        matched_keyword: null,
-        alternatives: [],
+        matched_keyword: results[0]?.rule?.mot_cle || null,
+        alternatives: results.slice(0, 3).map((r) => ({
+          mot_cle: r.rule.mot_cle,
+          diagnostic: r.rule.diagnostic,
+          confidence: r.score,
+        })),
       };
     }
 

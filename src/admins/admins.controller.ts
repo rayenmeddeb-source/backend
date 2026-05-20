@@ -84,7 +84,7 @@ export class AdminsController {
   }
 
   @Get('clients')
-  @Roles('administrateur')
+  @Roles('administrateur', 'prestataire')
   findAllClients() {
     return this.usersService.findAll();
   }
