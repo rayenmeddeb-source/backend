@@ -18,8 +18,19 @@ export class ChatbotRulesController {
   constructor(private readonly chatbotRulesService: ChatbotRulesService) {}
 
   @Post('analyze')
-  analyze(@Body() body: { message: string }) {
-    return this.chatbotRulesService.analyzeMessage(body.message);
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('client')
+  analyze(
+    @Body()
+    body: {
+      client_id: number;
+      message: string;
+    },
+  ) {
+    return this.chatbotRulesService.analyzeMessage(
+      body.client_id,
+      body.message,
+    );
   }
 
   @Post()

@@ -5,6 +5,7 @@ import { PannesService } from './pannes.service';
 import { Panne } from './panne.entity';
 import { ChatbotRulesModule } from '../chatbot-rules/chatbot-rules.module';
 
+
 @Module({
   imports: [TypeOrmModule.forFeature([Panne]), ChatbotRulesModule],
   controllers: [PannesController],

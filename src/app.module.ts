@@ -20,7 +20,8 @@ import { ChatbotRulesModule } from './chatbot-rules/chatbot-rules.module';
 import { ChatbotRule } from './chatbot-rules/chatbot-rules.entity';
 import { ReclamationsModule } from './reclamations/reclamations.module';
 import { Reclamation } from './reclamations/reclamation.entity';
-
+import { ChatbotHistoryModule } from './chatbot-history/chatbot-history.module';
+import { ChatbotHistory } from './chatbot-history/chatbot-history.entity';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -46,6 +47,7 @@ import { Reclamation } from './reclamations/reclamation.entity';
           RendezVous,
           ChatbotRule,
           Reclamation,
+          ChatbotHistory,
         ],
         synchronize: false,
       }),
@@ -61,6 +63,7 @@ import { Reclamation } from './reclamations/reclamation.entity';
     RendezVousModule,
     ChatbotRulesModule,
     ReclamationsModule,
+    ChatbotHistoryModule,
 
   ],
 })
