@@ -1,5 +1,5 @@
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
-
+import { IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
 export class CreateReclamationDto {
   @IsString()
   @IsNotEmpty()
@@ -9,4 +9,10 @@ export class CreateReclamationDto {
   @IsString()
   @IsNotEmpty()
   description: string;
+   
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  prestataire_id?: number;
+  
 }

@@ -19,12 +19,14 @@ export class ReclamationsService {
     auteur_id: number;
     sujet: string;
     description: string;
+    prestataire_id?: number | null;
   }) {
     const reclamation = this.reclamationsRepository.create({
       auteur_type: data.auteur_type,
       auteur_id: data.auteur_id,
       sujet: data.sujet,
       description: data.description,
+      prestataire_id: data.prestataire_id ?? null,
       statut: 'En attente',
       reponse_admin: null,
     });
@@ -67,6 +69,7 @@ export class ReclamationsService {
     data: {
       sujet: string;
       description: string;
+      prestataire_id?: number | null;
     },
   ) {
     const reclamation = await this.findOne(id);
@@ -88,6 +91,7 @@ export class ReclamationsService {
 
     reclamation.sujet = data.sujet;
     reclamation.description = data.description;
+    reclamation.prestataire_id = data.prestataire_id ?? null;
 
     return this.reclamationsRepository.save(reclamation);
   }

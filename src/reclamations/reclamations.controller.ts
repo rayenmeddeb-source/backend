@@ -33,6 +33,7 @@ export class ReclamationsController {
       auteur_id: user.sub,
       sujet: body.sujet,
       description: body.description,
+      prestataire_id: body.prestataire_id,
     });
   }
 
@@ -69,6 +70,7 @@ export class ReclamationsController {
       auteurType,
       user.sub,
       body,
+      
     );
   }
 

@@ -1,29 +1,44 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import { UserRole } from '../auth/auth-user.interface';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 @Entity('reclamations')
 export class Reclamation {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 20 })
-  auteur_type: Extract<UserRole, 'client' | 'prestataire'>;
+  @Column()
+  auteur_type: 'client' | 'prestataire';
 
   @Column()
   auteur_id: number;
 
-  @Column({ type: 'varchar', length: 200 })
+  @Column()
   sujet: string;
 
-  @Column({ type: 'text' })
+  @Column('text')
   description: string;
 
-  @Column({ type: 'varchar', length: 30, default: 'En attente' })
+  @Column({
+  type: 'integer',
+  nullable: true,
+})
+  prestataire_id: number | null;
+
+  @Column({
+    default: 'En attente',
+  })
   statut: 'En attente' | 'En cours' | 'Résolue' | 'Rejetée';
 
-  @Column({ type: 'text', nullable: true })
+  @Column({
+    type: 'text',
+    nullable: true,
+  })
   reponse_admin: string | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn()
   created_at: Date;
 }

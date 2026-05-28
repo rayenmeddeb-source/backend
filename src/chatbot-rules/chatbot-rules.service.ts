@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import axios from 'axios';
+
 import { ChatbotRule } from './chatbot-rules.entity';
 import { CHATBOT_RULE_PRESETS } from './chatbot-rule-presets';
 import { ChatbotHistoryService } from '../chatbot-history/chatbot-history.service';
@@ -18,7 +20,7 @@ export class ChatbotRulesService {
     private readonly chatbotHistoryService: ChatbotHistoryService,
   ) {}
 
-  private normalizeText(text: string) {
+  private normalize(text: string) {
     return String(text || '')
       .toLowerCase()
       .normalize('NFD')
@@ -28,20 +30,46 @@ export class ChatbotRulesService {
       .trim();
   }
 
-  private isAutomotiveMessage(message: string) {
-    const text = this.normalizeText(message);
+  private greetings = ['bonjour', 'salut', 'hello', 'bonsoir', 'hey', 'cc', 'salam'];
 
-    const automotiveWords = [
+  private faqResponses = [
+    {
+      keywords: ['prendre rendez vous', 'rendez vous', 'reservation', 'reserver'],
+      response:
+        'Vous pouvez prendre un rendez-vous depuis votre espace client, dans la section Rendez-vous.',
+    },
+    {
+      keywords: ['combien coute', 'prix', 'tarif', 'cout'],
+      response:
+        'Le coût dépend de la panne et du prestataire. Je peux vous donner une estimation après description du problème.',
+    },
+    {
+      keywords: ['est ce dangereux', 'dangereux', 'risque'],
+      response:
+        'Certaines pannes peuvent être dangereuses. Si vous constatez fumée, surchauffe, freinage faible ou voyant rouge, arrêtez le véhicule et contactez un prestataire.',
+    },
+    {
+      keywords: ['quel prestataire', 'quel garage', 'qui contacter'],
+      response:
+        'Selon la panne, je peux vous orienter vers un mécanicien, un électricien auto, un tôlier, un spécialiste freinage, pneus ou climatisation.',
+    },
+    {
+      keywords: ['merci', 'thanks'],
+      response:
+        'Avec plaisir 👋 Décrivez-moi un autre symptôme si vous souhaitez un autre diagnostic.',
+    },
+  ];
+
+  private isAutomotiveMessage(message: string) {
+    const text = this.normalize(message);
+
+    const words = [
       'voiture',
       'vehicule',
       'auto',
       'moteur',
       'panne',
       'garage',
-      'mecanicien',
-      'diagnostic',
-      'pneu',
-      'frein',
       'batterie',
       'demarre',
       'demarrage',
@@ -50,6 +78,8 @@ export class ChatbotRulesService {
       'essence',
       'diesel',
       'voyant',
+      'frein',
+      'pneu',
       'volant',
       'direction',
       'embrayage',
@@ -60,8 +90,6 @@ export class ChatbotRulesService {
       'chauffe',
       'carrosserie',
       'phare',
-      'pare brise',
-      'essuie glace',
       'turbo',
       'injecteur',
       'alternateur',
@@ -69,74 +97,25 @@ export class ChatbotRulesService {
       'echappement',
       'abs',
       'airbag',
-      'joint de culasse',
-      'liquide refroidissement',
-      'carburant',
-      'bougie',
       'courroie',
       'distribution',
-      'amortisseur',
-      'roue',
-      'jante',
-      'crevaison',
-      'electrique',
-      'tac tac',
-      'toc toc',
-      'clac',
-      'claquement',
-      'grincement',
-      'vibre',
+      'bruit',
       'vibration',
       'tremble',
-      'trembler',
-      'tremblement',
-      'secoue',
-      'secousse',
-      'secousses',
+      'fuite',
       'odeur',
-      'fumee noire',
-      'fumee blanche',
-      'fumee bleue',
-      'ne roule plus',
-      'ne avance plus',
-      'cale',
-      'consomme beaucoup',
-      'perte puissance',
-      'surconsommation',
-      'chauffe beaucoup',
-      'ne freine plus',
-      'bruit bizarre',
-      'bruit moteur',
-      'probleme acceleration',
-      'probleme freinage',
-      'probleme direction',
-      'probleme boite',
-      'probleme electrique',
+      'refroidissement',
+      'electrique',
+      'accelerer',
+      'acceleration',
+      'consommation',
     ];
 
-    return automotiveWords.some((word) => text.includes(word));
-  }
-
-  private getSeverityScore(gravite: string) {
-    const g = this.normalizeText(gravite);
-
-    if (g.includes('critique') || g.includes('grave') || g.includes('elevee')) {
-      return 90;
-    }
-
-    if (g.includes('moyenne') || g.includes('moderee')) {
-      return 60;
-    }
-
-    if (g.includes('faible') || g.includes('legere')) {
-      return 30;
-    }
-
-    return 50;
+    return words.some((word) => text.includes(word));
   }
 
   private extractSymptoms(message: string) {
-    const text = this.normalizeText(message);
+    const text = this.normalize(message);
 
     const symptoms = [
       'bruit',
@@ -152,7 +131,7 @@ export class ChatbotRulesService {
       'vibration',
       'tremblement',
       'odeur',
-      'climatisation',
+      'clim',
       'essence',
       'fuite',
       'direction',
@@ -166,71 +145,96 @@ export class ChatbotRulesService {
       'airbag',
       'abs',
       'phare',
-      'essuie glace',
       'suspension',
       'echappement',
       'courroie',
       'distribution',
-      'bougie',
       'acceleration',
-      'ralenti',
       'consommation',
-      'fumee noire',
-      'fumee blanche',
-      'fumee bleue',
-      'liquide refroidissement',
-      'joint de culasse',
     ];
 
     return symptoms.filter((symptom) => text.includes(symptom));
   }
 
+  private severityScore(gravite: string) {
+    const g = this.normalize(gravite);
+
+    if (g.includes('elevee') || g.includes('grave') || g.includes('critique')) {
+      return 90;
+    }
+
+    if (g.includes('moyenne') || g.includes('moderee')) {
+      return 60;
+    }
+
+    if (g.includes('faible') || g.includes('legere')) {
+      return 30;
+    }
+
+    return 50;
+  }
+
   private calculateScore(message: string, rule: ChatbotRule) {
-    const text = this.normalizeText(message);
-    const keyword = this.normalizeText(rule.mot_cle);
-    const diagnostic = this.normalizeText(rule.diagnostic);
-    const categorie = this.normalizeText(rule.categorie || '');
+    const text = this.normalize(message);
+    const keyword = this.normalize(rule.mot_cle);
+    const diagnostic = this.normalize(rule.diagnostic);
+    const categorie = this.normalize(rule.categorie || '');
 
     let score = 0;
 
-    if (text.includes(keyword)) {
-      score += 60;
-    }
+    if (text.includes(keyword)) score += 65;
 
-    const keywordWords = keyword.split(' ').filter((word) => word.length > 2);
-
-    keywordWords.forEach((word) => {
-      if (text.includes(word)) {
-        score += 18;
-      }
+    keyword.split(' ').forEach((word) => {
+      if (word.length > 2 && text.includes(word)) score += 18;
     });
 
-    const diagnosticWords = diagnostic
-      .split(' ')
-      .filter((word) => word.length > 4);
-
-    diagnosticWords.forEach((word) => {
-      if (text.includes(word)) {
-        score += 10;
-      }
+    diagnostic.split(' ').forEach((word) => {
+      if (word.length > 4 && text.includes(word)) score += 8;
     });
 
-    if (categorie && text.includes(categorie)) {
-      score += 12;
-    }
+    if (categorie && text.includes(categorie)) score += 10;
 
     return Math.min(score, 100);
+  }
+
+  private async askOllama(prompt: string) {
+    try {
+      const response = await axios.post('http://localhost:11434/api/generate', {
+        model: 'gemma2:2b',
+        prompt: `
+Tu es un mécanicien automobile expert.
+
+Tu réponds UNIQUEMENT aux problèmes de voitures.
+
+Tu ne dois jamais parler de sécurité informatique, vélos, systèmes d'alarme ou sujets hors automobile.
+
+Question utilisateur :
+"${prompt}"
+
+Réponds EXACTEMENT sous cette forme :
+
+Panne probable: ...
+Gravité: ...
+Conseil: ...
+Peut rouler: Oui ou Non
+Prestataire recommandé: ...
+
+Réponse courte, professionnelle et précise.
+        `,
+        stream: false,
+      });
+
+      return response.data.response;
+    } catch (error) {
+      console.error('Erreur Ollama:', error);
+      return null;
+    }
   }
 
   private async saveHistory(
     client_id: number,
     message_client: string,
-    response: {
-      conseil?: string;
-      diagnostic?: string;
-      confidence?: number;
-      message?: string;
-    },
+    response: any,
   ) {
     if (!client_id) return;
 
@@ -238,104 +242,86 @@ export class ChatbotRulesService {
       client_id,
       message_client,
       reponse_bot: response.conseil || response.message || '',
-      diagnostic: response.diagnostic || undefined,
+      diagnostic: response.diagnostic || null,
       confidence: response.confidence || 0,
     });
   }
 
   async analyzeMessage(client_id: number, message: string) {
-    if (!message || message.trim().length < 3) {
+    if (!message || message.trim().length < 2) {
       throw new BadRequestException(
-        'Veuillez décrire le problème du véhicule.',
+        'Veuillez décrire votre panne ou votre question.',
       );
     }
 
-    const text = this.normalizeText(message);
+    const text = this.normalize(message);
 
-    const greetings = [
-      'bonjour',
-      'salut',
-      'hello',
-      'bonsoir',
-      'hey',
-      'salam',
-      'cc',
-      'coucou',
-    ];
-
-    if (greetings.includes(text)) {
+    if (this.greetings.includes(text)) {
       const response = {
         message:
-          'Bonjour 👋 Je suis votre assistant automobile intelligent. Décrivez simplement une panne ou un symptôme de votre véhicule.',
-        diagnostic: 'Assistant prêt',
+          'Bonjour 👋 Je suis votre assistant automobile intelligent. Décrivez une panne ou posez une question sur votre véhicule.',
+       
+      };
+
+      await this.saveHistory(client_id, message, response);
+      return response;
+    }
+
+    const faq = this.faqResponses.find((item) =>
+      item.keywords.some((keyword) => text.includes(this.normalize(keyword))),
+    );
+
+    if (faq) {
+      const response = {
+        message: 'Réponse à votre question.',
+        diagnostic: 'Question générale',
         confidence: 100,
         gravite: 'Non applicable',
-        conseil:
-          'Exemple : "ma voiture chauffe", "fumée blanche", "elle tremble quand je roule", "voyant moteur allumé"...',
+        conseil: faq.response,
         besoin_prestataire: false,
-        categorie: 'Accueil',
-        cout_estime: {
-          min: 0,
-          max: 0,
-        },
+        categorie: 'FAQ',
+        cout_estime: { min: null, max: null },
         symptoms: [],
         matched_keyword: null,
         alternatives: [],
       };
 
       await this.saveHistory(client_id, message, response);
-
       return response;
     }
 
     if (!this.isAutomotiveMessage(message)) {
       const response = {
-        message:
-          'Je suis spécialisé uniquement dans les pannes automobiles.',
-        diagnostic: 'Sujet hors domaine automobile',
-        confidence: 0,
-        gravite: 'Non applicable',
-        conseil:
-          'Décrivez un problème lié à votre véhicule : moteur, batterie, pneus, fumée, freinage, bruit, voyant, démarrage, volant, direction, etc.',
-        besoin_prestataire: false,
-        categorie: 'Hors sujet',
-        cout_estime: {
-          min: null,
-          max: null,
-        },
-        symptoms: [],
-        matched_keyword: null,
-        alternatives: [],
+        message: 'Je suis spécialisé dans l’assistance automobile.',
+        diagnostic: 'Message hors sujet',
       };
 
       await this.saveHistory(client_id, message, response);
-
       return response;
     }
 
     const rules = await this.findActives();
 
     if (rules.length === 0) {
+      const aiResponse = await this.askOllama(message);
+
       const response = {
-        message: 'Aucune règle active disponible.',
-        diagnostic: 'Diagnostic indisponible',
-        confidence: 0,
-        gravite: 'Inconnue',
+        message: 'Analyse IA avancée.',
+        diagnostic: 'Analyse IA',
+        confidence: 75,
+        gravite: 'Moyenne',
         conseil:
-          'Veuillez contacter un prestataire automobile pour un diagnostic manuel.',
+          aiResponse ||
+          'Je n’ai pas identifié précisément la panne. Veuillez contacter un prestataire.',
         besoin_prestataire: true,
-        categorie: 'Diagnostic général',
-        cout_estime: {
-          min: null,
-          max: null,
-        },
-        symptoms: [],
+        categorie: 'IA Automobile',
+        cout_estime: { min: null, max: null },
+        symptoms: this.extractSymptoms(message),
         matched_keyword: null,
         alternatives: [],
       };
 
       await this.saveHistory(client_id, message, response);
-
       return response;
     }
 
@@ -349,54 +335,48 @@ export class ChatbotRulesService {
 
     const symptoms = this.extractSymptoms(message);
 
-    if (results.length === 0 || results[0].score < 35) {
+    if (results.length === 0 || results[0].score < 30) {
+      const aiResponse = await this.askOllama(message);
+
       const response = {
-        message:
-          'Je n’ai pas encore identifié précisément cette panne automobile.',
-        diagnostic: 'Diagnostic incertain',
-        confidence: results[0]?.score || 20,
+        message: 'Analyse IA avancée.',
+        diagnostic: 'Analyse IA',
+        confidence: 75,
         gravite: 'Moyenne',
         conseil:
-          'Pouvez-vous préciser davantage le problème ? Exemple : bruit, fumée, vibration, difficulté de démarrage, voyant, perte de puissance, freinage, odeur, consommation, volant dur, direction bloquée, etc.',
+          aiResponse ||
+          'Je n’ai pas identifié précisément cette panne. Veuillez préciser les symptômes.',
         besoin_prestataire: true,
-        categorie: 'Diagnostic général',
-        cout_estime: {
-          min: null,
-          max: null,
-        },
+        categorie: 'IA Automobile',
+        cout_estime: { min: null, max: null },
         symptoms,
         matched_keyword: results[0]?.rule?.mot_cle || null,
-        alternatives: results.slice(0, 3).map((r) => ({
-          mot_cle: r.rule.mot_cle,
-          diagnostic: r.rule.diagnostic,
-          confidence: r.score,
-        })),
+        alternatives: [],
       };
 
       await this.saveHistory(client_id, message, response);
-
       return response;
     }
 
     const best = results[0].rule;
     const confidence = results[0].score;
-    const severityScore = this.getSeverityScore(best.gravite);
+    const severity = this.severityScore(best.gravite);
 
-    let conseil = 'Nous vous recommandons de consulter un prestataire.';
+    let conseil = 'Un contrôle chez un prestataire est recommandé.';
 
-    if (severityScore >= 80) {
+    if (severity >= 80) {
       conseil =
-        'Arrêtez le véhicule si nécessaire et contactez rapidement un prestataire qualifié.';
-    } else if (severityScore >= 50) {
+        'Panne potentiellement sérieuse. Évitez de rouler si le symptôme est important et contactez rapidement un prestataire.';
+    } else if (severity >= 50) {
       conseil =
         'Le problème doit être vérifié prochainement afin d’éviter une panne plus grave.';
     } else {
       conseil =
-        'Le problème semble moins urgent, mais une vérification reste recommandée.';
+        'Le problème semble moins urgent, mais une vérification reste conseillée.';
     }
 
     const response = {
-      message: 'Analyse NLP effectuée avec succès.',
+      message: 'Analyse effectuée avec succès.',
       diagnostic: best.diagnostic,
       confidence,
       gravite: best.gravite,
@@ -418,7 +398,6 @@ export class ChatbotRulesService {
     };
 
     await this.saveHistory(client_id, message, response);
-
     return response;
   }
 
@@ -440,19 +419,17 @@ export class ChatbotRulesService {
       throw new BadRequestException('Ce mot-clé existe déjà.');
     }
 
-    const rule = new ChatbotRule();
-
-    rule.mot_cle = data.mot_cle;
-    rule.diagnostic = data.diagnostic;
-    rule.gravite = data.gravite;
-    rule.cout_min = data.cout_min !== undefined ? Number(data.cout_min) : null;
-    rule.cout_max = data.cout_max !== undefined ? Number(data.cout_max) : null;
-    rule.besoin_prestataire =
-      data.besoin_prestataire !== undefined
-        ? data.besoin_prestataire
-        : true;
-    rule.categorie = data.categorie ?? null;
-    rule.actif = data.actif !== undefined ? data.actif : true;
+    const rule = this.chatbotRulesRepository.create({
+      mot_cle: data.mot_cle,
+      diagnostic: data.diagnostic,
+      gravite: data.gravite,
+      cout_min: data.cout_min !== undefined ? Number(data.cout_min) : null,
+      cout_max: data.cout_max !== undefined ? Number(data.cout_max) : null,
+      besoin_prestataire:
+        data.besoin_prestataire !== undefined ? data.besoin_prestataire : true,
+      categorie: data.categorie ?? null,
+      actif: data.actif !== undefined ? data.actif : true,
+    });
 
     return this.chatbotRulesRepository.save(rule);
   }
@@ -482,69 +459,14 @@ export class ChatbotRulesService {
     return rule;
   }
 
-  async update(
-    id: number,
-    data: {
-      mot_cle?: string;
-      diagnostic?: string;
-      gravite?: string;
-      cout_min?: number;
-      cout_max?: number;
-      besoin_prestataire?: boolean;
-      categorie?: string;
-      actif?: boolean;
-    },
-  ) {
+  async update(id: number, data: Partial<ChatbotRule>) {
     const rule = await this.findOne(id);
-
-    if (data.mot_cle && data.mot_cle !== rule.mot_cle) {
-      const existingRule = await this.chatbotRulesRepository.findOne({
-        where: { mot_cle: data.mot_cle },
-      });
-
-      if (existingRule) {
-        throw new BadRequestException('Ce mot-clé existe déjà.');
-      }
-    }
-
-    if (data.mot_cle !== undefined) {
-      rule.mot_cle = data.mot_cle;
-    }
-
-    if (data.diagnostic !== undefined) {
-      rule.diagnostic = data.diagnostic;
-    }
-
-    if (data.gravite !== undefined) {
-      rule.gravite = data.gravite;
-    }
-
-    if (data.cout_min !== undefined) {
-      rule.cout_min = Number(data.cout_min);
-    }
-
-    if (data.cout_max !== undefined) {
-      rule.cout_max = Number(data.cout_max);
-    }
-
-    if (data.besoin_prestataire !== undefined) {
-      rule.besoin_prestataire = data.besoin_prestataire;
-    }
-
-    if (data.categorie !== undefined) {
-      rule.categorie = data.categorie;
-    }
-
-    if (data.actif !== undefined) {
-      rule.actif = data.actif;
-    }
-
+    Object.assign(rule, data);
     return this.chatbotRulesRepository.save(rule);
   }
 
   async remove(id: number) {
     const rule = await this.findOne(id);
-
     await this.chatbotRulesRepository.remove(rule);
 
     return {
