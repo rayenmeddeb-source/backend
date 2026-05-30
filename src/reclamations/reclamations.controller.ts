@@ -34,6 +34,7 @@ export class ReclamationsController {
       sujet: body.sujet,
       description: body.description,
       prestataire_id: body.prestataire_id,
+      client_id: body.client_id,
     });
   }
 

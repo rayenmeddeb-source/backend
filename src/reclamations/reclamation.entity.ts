@@ -41,4 +41,10 @@ export class Reclamation {
 
   @CreateDateColumn()
   created_at: Date;
+
+  @Column({
+    type: 'integer',
+    nullable: true,
+  })
+  client_id: number | null;
 }

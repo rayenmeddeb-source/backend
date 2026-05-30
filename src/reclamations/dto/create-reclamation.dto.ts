@@ -14,5 +14,10 @@ export class CreateReclamationDto {
   @Type(() => Number)
   @IsNumber()
   prestataire_id?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  client_id?: number;
   
 }
