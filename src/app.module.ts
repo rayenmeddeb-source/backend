@@ -22,6 +22,8 @@ import { ReclamationsModule } from './reclamations/reclamations.module';
 import { Reclamation } from './reclamations/reclamation.entity';
 import { ChatbotHistoryModule } from './chatbot-history/chatbot-history.module';
 import { ChatbotHistory } from './chatbot-history/chatbot-history.entity';
+import { EvaluationsModule } from './evaluations/evaluations.module';
+import { Evaluation } from './evaluations/evaluation.entity';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -48,6 +50,7 @@ import { ChatbotHistory } from './chatbot-history/chatbot-history.entity';
           ChatbotRule,
           Reclamation,
           ChatbotHistory,
+          Evaluation,
         ],
         synchronize: false,
       }),
@@ -64,6 +67,7 @@ import { ChatbotHistory } from './chatbot-history/chatbot-history.entity';
     ChatbotRulesModule,
     ReclamationsModule,
     ChatbotHistoryModule,
+    EvaluationsModule,
 
   ],
 })

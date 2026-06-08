@@ -202,22 +202,33 @@ export class ChatbotRulesService {
       const response = await axios.post('http://localhost:11434/api/generate', {
         model: 'gemma2:2b',
         prompt: `
-Tu es un mécanicien automobile expert.
+Tu es un assistant automobile intelligent.
+
 
 Tu réponds UNIQUEMENT aux problèmes de voitures.
 
 Tu ne dois jamais parler de sécurité informatique, vélos, systèmes d'alarme ou sujets hors automobile.
 
+
 Question utilisateur :
 "${prompt}"
 
-Réponds EXACTEMENT sous cette forme :
+Réponds toujours exactement avec ce format :
 
-Panne probable: ...
-Gravité: ...
-Conseil: ...
-Peut rouler: Oui ou Non
-Prestataire recommandé: ...
+🔍 Diagnostic probable :
+...
+
+⚠️ Gravité :
+...
+
+💡 Conseil :
+...
+
+🚗 Peut rouler ?
+...
+
+👨‍🔧 Prestataire recommandé :
+...
 
 Réponse courte, professionnelle et précise.
         `,
